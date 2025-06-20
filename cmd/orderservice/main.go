@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/joho/godotenv"
-	"github.com/jonamarkin/e-commerce-order-processing/orderservice/internal/orderservice/config"
+	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/config"
 )
 
 func main() {
