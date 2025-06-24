@@ -72,6 +72,17 @@ func NewHandler(orderService service.OrderService) *Handler {
 	}
 }
 
+// HealthCheck godoc
+// @Summary Health check
+// @Description Checks if the service is up and running.
+// @Tags health
+// @Produce plain
+// @Success 200 {string} string "OK"
+// @Router /health [get]
+func (h *Handler) HealthCheck(c *gin.Context) {
+	c.String(http.StatusOK, "OK")
+}
+
 // CreateOrder godoc
 // @Summary Create a new order
 // @Description Creates a new customer order with specified items.

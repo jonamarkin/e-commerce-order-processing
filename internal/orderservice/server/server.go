@@ -33,6 +33,9 @@ func NewServer(handler *api.Handler, port int) *Server {
 			c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration)
 	})
 
+	// --- Health Check Endpoint ---
+	router.GET("/health", handler.HealthCheck)
+
 	// --- API Grouping ---
 	apiV1 := router.Group("/api/v1")
 	{
