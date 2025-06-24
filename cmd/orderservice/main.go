@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/kafka"
 	"log"
 	"time"
 
@@ -42,9 +43,19 @@ func main() {
 	}
 	log.Println("Successfully connected to PostgreSQL database!")
 
+	// --- Kafka Producer Initialization ---
+	const orderPlacedTopic = "orders.placed"
+	kafkaProducer := kafka.NewProducer(cfg.KafkaBrokers, orderPlacedTopic)
+	defer func() {
+		if err := kafkaProducer.Close(); err != nil {
+			log.Printf("Failed to close Kafka producer: %v", err)
+		}
+	}()
+	log.Printf("Kafka producer initialized for topic: %s with brokers: %v", orderPlacedTopic, cfg.KafkaBrokers)
+
 	// --- Initialize Repository, Service, and API Handler ---
 	orderRepo := repository.NewPostgresOrderRepository(db)
-	orderService := service.NewOrderService(orderRepo)
+	orderService := service.NewOrderService(orderRepo, kafkaProducer)
 	orderHandler := api.NewHandler(orderService)
 
 	// --- Initialize and Run HTTP Server ---
