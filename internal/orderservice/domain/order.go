@@ -10,10 +10,10 @@ type Order struct {
 	ID         uuid.UUID   `json:"id"`
 	CustomerID uuid.UUID   `json:"customer_id"`
 	Items      []OrderItem `json:"items"`
-	Status     string      `json:"status"`
-	TotalPrice float64     `json:"total_price"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	Status     OrderStatus
+	TotalPrice float64   `json:"total_price"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type OrderItem struct {
@@ -54,7 +54,7 @@ func NewOrder(customerID uuid.UUID, items []OrderItem) (*Order, error) {
 		ID:         uuid.New(),
 		CustomerID: customerID,
 		Items:      items,
-		Status:     string(OrderStatusPending),
+		Status:     OrderStatusPending,
 		TotalPrice: totalPrice,
 		CreatedAt:  now,
 		UpdatedAt:  now,

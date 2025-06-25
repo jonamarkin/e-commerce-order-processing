@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/kafka"
 	"log"
@@ -21,11 +20,11 @@ type OrderService interface {
 
 type orderServiceImpl struct {
 	orderRepo     repository.OrderRepository
-	kafkaProducer *kafka.Producer
+	kafkaProducer kafka.KafkaProducer
 }
 
 // NewOrderService creates a new instance of OrderService.
-func NewOrderService(repo repository.OrderRepository, producer *kafka.Producer) OrderService {
+func NewOrderService(repo repository.OrderRepository, producer kafka.KafkaProducer) OrderService {
 	return &orderServiceImpl{
 		orderRepo:     repo,
 		kafkaProducer: producer,
@@ -84,11 +83,7 @@ func (s *orderServiceImpl) CreateOrder(ctx context.Context, customerID uuid.UUID
 func (s *orderServiceImpl) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*domain.Order, error) {
 	order, err := s.orderRepo.GetOrderByID(ctx, orderID)
 	if err != nil {
-		if errors.Is(err, domain.ErrOrderNotFound) {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to get order: %w", err)
+		return nil, fmt.Errorf("service: failed to get order by ID %s: %w", orderID, err) // <-- Ensure this is exactly like this
 	}
-
 	return order, nil
 }

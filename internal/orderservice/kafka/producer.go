@@ -9,25 +9,27 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+type KafkaProducer interface {
+	PublishMessage(ctx context.Context, key, value []byte) error
+	Close() error
+}
+
 type Producer struct {
 	writer *kafka.Writer
 }
 
-// NewProducer creates a new Kafka producer.
-// brokers should be a slice of "host:port" strings.
-// topic is the default topic to write to.
 func NewProducer(brokers []string, topic string) *Producer {
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(brokers...),
 		Topic:        topic,
-		Balancer:     &kafka.LeastBytes{},          // Distribute messages among partitions
-		RequiredAcks: kafka.RequiredAcks(1),        // Wait for leader acknowledgement
-		MaxAttempts:  3,                            // Retry up to 3 times
-		WriteTimeout: 5 * time.Second,              // Timeout for write operations
-		BatchTimeout: 1 * time.Second,              // Max time before a batch is sent
-		BatchSize:    100,                          // Max number of messages in a batch
-		Logger:       kafka.LoggerFunc(log.Printf), // Integrate with standard logger
-		ErrorLogger:  kafka.LoggerFunc(log.Printf), // Integrate with standard error logger
+		Balancer:     &kafka.LeastBytes{},
+		RequiredAcks: kafka.RequiredAcks(1),
+		MaxAttempts:  3,
+		WriteTimeout: 5 * time.Second,
+		BatchTimeout: 1 * time.Second,
+		BatchSize:    100,
+		Logger:       kafka.LoggerFunc(log.Printf),
+		ErrorLogger:  kafka.LoggerFunc(log.Printf),
 	}
 	return &Producer{writer: writer}
 }

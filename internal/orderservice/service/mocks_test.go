@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// MockOrderRepository is a mock implementation of OrderRepository.
 type MockOrderRepository struct {
 	mock.Mock
 }
@@ -19,8 +20,12 @@ func (m *MockOrderRepository) CreateOrder(ctx context.Context, order *domain.Ord
 
 func (m *MockOrderRepository) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*domain.Order, error) {
 	args := m.Called(ctx, orderID)
-	// The first return value (0) is the *domain.Order, second (1) is the error
 	return args.Get(0).(*domain.Order), args.Error(1)
+}
+
+func (m *MockOrderRepository) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status domain.OrderStatus) error {
+	args := m.Called(ctx, id, status)
+	return args.Error(0)
 }
 
 type MockKafkaProducer struct {
