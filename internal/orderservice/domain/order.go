@@ -33,26 +33,24 @@ const (
 )
 
 func NewOrder(customerID uuid.UUID, items []OrderItem) (*Order, error) {
-	//Calculate total price
-	totalPrice := 0.0
-	for _, item := range items {
-		if item.Quantity <= 0 {
-			return nil, ErrInvalidOrderItemQuantity
-		}
-		if item.UnitPrice < 0 {
-			return nil, ErrInvalidOrderItemUnitPrice
-		}
-		totalPrice += float64(item.Quantity) * item.UnitPrice
-
-	}
-
 	if len(items) == 0 {
 		return nil, ErrNoOrderItems
 	}
 
-	now := time.Now()
+	var totalPrice float64
+	for _, item := range items {
+		if item.Quantity <= 0 {
+			return nil, ErrInvalidOrderItemQuantity
+		}
 
-	return &Order{
+		if item.UnitPrice <= 0 {
+			return nil, ErrInvalidOrderItemUnitPrice
+		}
+		totalPrice += float64(item.Quantity) * item.UnitPrice
+	}
+
+	now := time.Now()
+	order := &Order{
 		ID:         uuid.New(),
 		CustomerID: customerID,
 		Items:      items,
@@ -60,5 +58,7 @@ func NewOrder(customerID uuid.UUID, items []OrderItem) (*Order, error) {
 		TotalPrice: totalPrice,
 		CreatedAt:  now,
 		UpdatedAt:  now,
-	}, nil
+	}
+
+	return order, nil
 }
