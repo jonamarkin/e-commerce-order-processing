@@ -133,6 +133,7 @@ The API is served under `/api/v1`.
 
 ### Project Structure
 
+```
 ├── cmd/               # Main application entry points
 │   └── orderservice/  # Order Service main executable
 ├── config/            # Application configuration loading
@@ -147,10 +148,12 @@ The API is served under `/api/v1`.
 │       ├── repository/# Data access layer (PostgreSQL implementation)
 │       └── service/   # Business logic, orchestrating domain, repo, and external calls
 ├── docs/              # Generated Swagger documentation
-└── go.mod             # Go module definition
-└── go.sum             # Go module checksums
-└── README.md          # This file
+├── go.mod             # Go module definition
+├── go.sum             # Go module checksums
+├── README.md          # This file
 └── env.example        # Example environment variables
+```
+
 
 
 ## Contributing
