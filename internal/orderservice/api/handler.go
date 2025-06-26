@@ -151,6 +151,8 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
+		//Print the error to the console for debugging
+		c.Error(err) // Log the error using Gin's error logging
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create order"})
 		return
 	}

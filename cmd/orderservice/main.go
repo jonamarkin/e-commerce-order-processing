@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -24,6 +25,8 @@ import (
 	_ "github.com/jonamarkin/e-commerce-order-processing/docs"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // @title E-Commerce Order Processing Service API
@@ -46,6 +49,13 @@ func main() {
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Warn().Msg("No .env file found, using environment variables")
+	} else {
+		log.Info().Msg("Loaded environment variables from .env file")
+	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -96,6 +106,8 @@ func main() {
 	}
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Prometheus metrics endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// --- HTTP Server Setup and Graceful Shutdown ---
 	server := &http.Server{

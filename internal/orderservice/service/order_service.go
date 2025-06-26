@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/kafka"
+	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/metrics"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,17 +42,27 @@ type OrderPlacedEvent struct {
 // CreateOrder handles the creation of a new order, applying business rules,
 // persisting it, and publishing an event.
 func (s *orderServiceImpl) CreateOrder(ctx context.Context, customerID uuid.UUID, items []domain.OrderItem) (*domain.Order, error) {
+	status := "success"
+	start := time.Now()
+	defer func() {
+		metrics.OrderCreationDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
+	}()
+
 	order, err := domain.NewOrder(customerID, items)
 	if err != nil {
+		status = "failure"
 		log.Ctx(ctx).Error().Err(err).Msg("Service: failed to create new order domain object") // Contextual logging
 		return nil, fmt.Errorf("service: failed to create new order domain object: %w", err)
 	}
 
 	err = s.orderRepo.CreateOrder(ctx, order)
 	if err != nil {
+		status = "failure"
 		log.Ctx(ctx).Error().Err(err).Msg("Service: failed to persist order")
 		return nil, fmt.Errorf("service: failed to persist order: %w", err)
 	}
+
+	metrics.OrdersCreatedTotal.Inc()
 
 	orderPlacedEvent := struct {
 		OrderID    uuid.UUID `json:"order_id"`
@@ -105,13 +116,21 @@ func (s *orderServiceImpl) CreateOrder(ctx context.Context, customerID uuid.UUID
 }
 
 func (s *orderServiceImpl) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*domain.Order, error) {
+	status := "success"
+	start := time.Now()
+	defer func() {
+		metrics.OrderRetrievalDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
+	}()
+
 	order, err := s.orderRepo.GetOrderByID(ctx, orderID)
 	if err != nil {
+		status = "failure"
 		log.Ctx(ctx).Error().Err(err).
 			Str("order_id", orderID.String()).
 			Msg("Service: failed to get order by ID")
 		return nil, fmt.Errorf("service: failed to get order by ID %s: %w", orderID, err)
 	}
+	metrics.OrdersRetrievedTotal.Inc()
 	log.Ctx(ctx).Info().Str("order_id", orderID.String()).Msg("Order retrieved successfully")
 	return order, nil
 }
