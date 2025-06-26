@@ -3,9 +3,9 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -51,6 +51,6 @@ func (p *Producer) PublishMessage(ctx context.Context, key, value []byte) error 
 
 // Close closes the Kafka producer connection.
 func (p *Producer) Close() error {
-	log.Println("Closing Kafka producer...")
+	log.Info().Msg("Closing Kafka producer...")
 	return p.writer.Close()
 }

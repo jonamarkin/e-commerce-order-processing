@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/kafka"
-	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/api"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/config"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/repository"
-	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/server"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/service"
 	_ "github.com/lib/pq"
 
@@ -39,40 +43,43 @@ import (
 // @schemes http
 
 func main() {
-	// Load environment variables from .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("No .env file found or error loading .env:", err)
-	}
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatal().Err(err).Msg("Error loading configuration")
 	}
 
-	log.Printf("Configuration loaded: %+v\n", cfg)
-
-	// --- Database Initialization ---
-	db, err := connectDB(cfg.DatabaseURL)
+	// --- Database Connection ---
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatal().Err(err).Msg("Error connecting to database")
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Error().Err(err).Msg("Failed to close database connection")
+		}
+	}()
 
-	if err = db.PingContext(context.Background()); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+	// Ping database to verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err = db.PingContext(ctx); err != nil {
+		log.Fatal().Err(err).Msg("Failed to ping database")
 	}
-	log.Println("Successfully connected to PostgreSQL database!")
+	log.Info().Msg("Successfully connected to the database!")
 
 	// --- Kafka Producer Initialization ---
 	const orderPlacedTopic = "orders.placed"
 	kafkaProducer := kafka.NewProducer(cfg.KafkaBrokers, orderPlacedTopic)
 	defer func() {
 		if err := kafkaProducer.Close(); err != nil {
-			log.Printf("Failed to close Kafka producer: %v", err)
+			log.Error().Err(err).Msg("Failed to close Kafka producer")
 		}
 	}()
-	log.Printf("Kafka producer initialized for topic: %s with brokers: %v", orderPlacedTopic, cfg.KafkaBrokers)
+	log.Info().Str("topic", orderPlacedTopic).Strs("brokers", cfg.KafkaBrokers).Msg("Kafka producer initialized")
 
 	// --- Initialize Repository, Service, and API Handler ---
 	orderRepo := repository.NewPostgresOrderRepository(db)
@@ -82,32 +89,37 @@ func main() {
 	// --- Gin Router Setup ---
 	router := gin.Default()
 
-	// Add a base group for versioning (recommended practice)
 	v1 := router.Group("/api/v1")
 	{
 		v1.POST("/orders", orderHandler.CreateOrder)
 		v1.GET("/orders/:id", orderHandler.GetOrderByID)
 	}
 
-	// Swagger UI endpoint
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// --- Initialize and Run HTTP Server ---
-	srv := server.NewServer(router, cfg.ServerPort)
-	if err := srv.Run(); err != nil {
-		log.Fatalf("Server stopped with error: %v", err)
-	}
-}
-
-func connectDB(dataSourceName string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", dataSourceName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	// --- HTTP Server Setup and Graceful Shutdown ---
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", cfg.ServerPort),
+		Handler: router,
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(10)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	go func() {
+		log.Info().Int("port", cfg.ServerPort).Msg("Server listening")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("Server failed to listen")
+		}
+	}()
 
-	return db, nil
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info().Msg("Shutting down server...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal().Err(err).Msg("Server forced to shutdown")
+	}
+	log.Info().Msg("Server exited gracefully.")
 }
