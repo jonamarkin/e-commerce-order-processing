@@ -1,0 +1,170 @@
+basePath: /api/v1
+definitions:
+  api.CreateOrderItem:
+    properties:
+      product_id:
+        example: fedcba98-7654-3210-fedc-ba9876543210
+        type: string
+      quantity:
+        example: 1
+        type: integer
+      unit_price:
+        example: 99.99
+        type: number
+    required:
+    - product_id
+    - quantity
+    - unit_price
+    type: object
+  api.CreateOrderRequest:
+    properties:
+      customer_id:
+        example: a1b2c3d4-e5f6-7890-1234-567890abcdef
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/api.CreateOrderItem'
+        minItems: 1
+        type: array
+    required:
+    - customer_id
+    - items
+    type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        example: Invalid request payload
+        type: string
+    type: object
+  api.OrderItemResponse:
+    properties:
+      product_id:
+        example: fedcba98-7654-3210-fedc-ba9876543210
+        type: string
+      quantity:
+        example: 1
+        type: integer
+      unit_price:
+        example: 99.99
+        type: number
+    type: object
+  api.OrderResponse:
+    properties:
+      created_at:
+        example: "2023-10-27T10:00:00Z"
+        type: string
+      customer_id:
+        example: a1b2c3d4-e5f6-7890-1234-567890abcdef
+        type: string
+      id:
+        example: a1b2c3d4-e5f6-7890-1234-567890abcdef
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/api.OrderItemResponse'
+        type: array
+      status:
+        description: Changed to string for JSON serialization
+        example: pending
+        type: string
+      total_price:
+        example: 199.98
+        type: number
+      updated_at:
+        example: "2023-10-27T10:00:00Z"
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the API documentation for the E-Commerce Order Processing Service.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: E-Commerce Order Processing Service API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Checks if the service is up and running.
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - health
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: Create a new customer order with provided items.
+      parameters:
+      - description: Order creation request
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            $ref: '#/definitions/api.OrderResponse'
+        "400":
+          description: Invalid request payload or validation error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new order
+      tags:
+      - orders
+  /orders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a single order's details by its unique ID.
+      parameters:
+      - description: Order ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order retrieved successfully
+          schema:
+            $ref: '#/definitions/api.OrderResponse'
+        "400":
+          description: Invalid order ID format
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Order not found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get order by ID
+      tags:
+      - orders
+schemes:
+- http
+swagger: "2.0"

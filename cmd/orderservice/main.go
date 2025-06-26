@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/kafka"
 	"log"
 	"time"
@@ -15,7 +16,27 @@ import (
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/server"
 	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/service"
 	_ "github.com/lib/pq"
+
+	_ "github.com/jonamarkin/e-commerce-order-processing/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// @title E-Commerce Order Processing Service API
+// @version 1.0
+// @description This is the API documentation for the E-Commerce Order Processing Service.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+// @schemes http
 
 func main() {
 	// Load environment variables from .env file
@@ -58,8 +79,21 @@ func main() {
 	orderService := service.NewOrderService(orderRepo, kafkaProducer)
 	orderHandler := api.NewHandler(orderService)
 
+	// --- Gin Router Setup ---
+	router := gin.Default()
+
+	// Add a base group for versioning (recommended practice)
+	v1 := router.Group("/api/v1")
+	{
+		v1.POST("/orders", orderHandler.CreateOrder)
+		v1.GET("/orders/:id", orderHandler.GetOrderByID)
+	}
+
+	// Swagger UI endpoint
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// --- Initialize and Run HTTP Server ---
-	srv := server.NewServer(orderHandler, cfg.ServerPort)
+	srv := server.NewServer(router, cfg.ServerPort)
 	if err := srv.Run(); err != nil {
 		log.Fatalf("Server stopped with error: %v", err)
 	}

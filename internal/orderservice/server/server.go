@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonamarkin/e-commerce-order-processing/internal/orderservice/api"
 )
 
 // Server represents the HTTP server for the Order Service.
@@ -21,33 +20,10 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(handler *api.Handler, port int) *Server {
-	router := gin.Default()
-
-	// Middleware
-	router.Use(func(c *gin.Context) {
-		start := time.Now()
-		c.Next() // Process request
-		duration := time.Since(start)
-		log.Printf("Request - Method: %s, Path: %s, Status: %d, Duration: %s",
-			c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration)
-	})
-
-	// --- Health Check Endpoint ---
-	router.GET("/health", handler.HealthCheck)
-
-	// --- API Grouping ---
-	apiV1 := router.Group("/api/v1")
-	{
-		ordersGroup := apiV1.Group("/orders")
-		{
-			ordersGroup.POST("/", handler.CreateOrder)
-			ordersGroup.GET("/:id", handler.GetOrderByID)
-		}
-	}
+func NewServer(configuredRouter *gin.Engine, port int) *Server {
 
 	return &Server{
-		router: router,
+		router: configuredRouter,
 		port:   port,
 	}
 }
